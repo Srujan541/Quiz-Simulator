@@ -1,0 +1,151 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import random
+
+# ---------- LOAD QUESTIONS ----------
+def load_questions(file):
+    qdata = {}
+    with open(file, encoding="utf-8") as f:
+        for line in f:
+            if not line.strip() or line.startswith("topic"):
+                continue
+            t, q, *opts, ans = line.strip().split(",")
+            qdata.setdefault(t, []).append({
+                "q": q,
+                "o": opts,
+                "c": opts[ord(ans) - 65]
+            })
+    return qdata
+
+quiz = load_questions("questions.txt")
+
+topic_names = {
+    "Python": "Python Programming",
+    "GK": "General Knowledge",
+    "DS": "Data Structures",
+    "OS": "Operating Systems",
+    "CN": "Computer Networks"
+}
+
+current = score = 0
+questions, answers = [], []
+
+# ---------- QUIZ LOGIC ----------
+def start_quiz():
+    global questions, current, score
+    if not topic_var.get():
+        return messagebox.showerror("Error", "Select a topic")
+
+    key = next(k for k, v in topic_names.items() if v == topic_var.get())
+    questions[:] = random.sample(quiz[key], 10)
+    current = score = 0
+    answers.clear()
+    notebook.select(quiz_tab)
+    show_q()
+
+def show_q():
+    if current == len(questions):
+        return show_result()
+
+    q = questions[current]
+    question_lbl.config(text=f"Q{current+1}. {q['q']}")
+    opts = q["o"][:]
+    random.shuffle(opts)
+
+    for i, b in enumerate(option_btns):
+        b.config(text=f"{chr(65+i)}. {opts[i]}", value=opts[i])
+    ans_var.set("")
+
+def next_q():
+    global current, score
+    if not ans_var.get():
+        return messagebox.showwarning("Warning", "Select an option")
+
+    if ans_var.get() == questions[current]["c"]:
+        score += 1
+
+    answers.append(questions[current]["c"])
+    current += 1
+    show_q()
+
+def show_result():
+    notebook.select(result_tab)
+    result_box.delete("1.0", tk.END)
+    result_box.insert(tk.END, f"Final Score: {score}/10\n\nCorrect Answers:\n\n")
+    for i, a in enumerate(answers, 1):
+        result_box.insert(tk.END, f"{i}. {a}\n")
+
+# ---------- GUI ----------
+root = tk.Tk()
+root.title("IQ Quiz Simulator")
+root.geometry("800x550")
+root.configure(bg="#f4f6f9")
+
+ttk.Style().configure("TNotebook.Tab", font = ("Arial", 11, "bold"))
+
+notebook = ttk.Notebook(root)
+notebook.pack(fill="both", expand=True, padx=10, pady=10)
+
+# ---------- LOGIN TAB ----------
+login_tab = tk.Frame(notebook, bg="#f4f6f9")
+notebook.add(login_tab, text="Login")
+
+tk.Label(login_tab, text="IQ QUIZ SIMULATOR",
+         font=("Arial", 20, "bold"),
+         bg="#2c3e50", fg="white",
+         pady=15).pack(fill="x", pady=10)
+
+card = tk.Frame(login_tab, bg="white", padx=30, pady=30)
+card.pack(pady=30)
+
+topic_var = tk.StringVar()
+
+for lbl in ("Student Name", "Roll Number", "Select Topic"):
+    tk.Label(card, text=lbl, bg="white",
+             font=("Arial", 11, "bold")).pack(pady=5)
+    (tk.Entry(card, width=30) if lbl != "Select Topic"
+     else ttk.Combobox(card, textvariable=topic_var,
+                       values=list(topic_names.values()),
+                       state="readonly")).pack()
+
+tk.Button(card, text="Start Quiz",
+          bg="#3498db", fg="white",
+          font=("Arial", 12, "bold"),
+          command=start_quiz).pack(pady=20)
+
+# ---------- QUIZ TAB ----------
+quiz_tab = tk.Frame(notebook, bg="#f4f6f9")
+notebook.add(quiz_tab, text="Quiz")
+
+question_lbl = tk.Label(quiz_tab, font=("Arial", 13, "bold"),
+                        wraplength=700, bg="#f4f6f9")
+question_lbl.pack(pady=25)
+
+ans_var = tk.StringVar()
+option_btns = []
+for _ in range(4):
+    rb = tk.Radiobutton(quiz_tab, variable=ans_var,
+                        bg="#ecf0f1", anchor="w",
+                        font=("Arial", 11), padx=10)
+    rb.pack(fill="x", padx=120, pady=5)
+    option_btns.append(rb)
+
+tk.Button(quiz_tab, text="Next",
+          bg="#27ae60", fg="white",
+          font=("Arial", 12, "bold"),
+          command=next_q).pack(pady=20)
+
+# ---------- RESULT TAB ----------
+result_tab = tk.Frame(notebook, bg="#e8f8f5")
+notebook.add(result_tab, text="Result")
+
+result_box = tk.Text(result_tab, bg="#e8f8f5",
+                     font=("Arial", 11), bd=0)
+result_box.pack(fill="both", expand=True, padx=40, pady=30)
+
+tk.Button(result_tab, text="Exit",
+          bg="#e74c3c", fg="white",
+          font=("Arial", 12, "bold"),
+          command=root.destroy).pack(pady=15)
+
+root.mainloop()
